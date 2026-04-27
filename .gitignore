@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Prisma generated
+generated/
+
+# Local working notes (not for public repo)
+CLAUDE.md
+PLAN.md
+CONTEXT.md
+challenge.txt

@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  ingredients   Ingredient[]
+  suppliers     Supplier[]
+  menuItems     MenuItem[]
+  sales         SalesLog[]
+  restockDrafts RestockDraft[]
+
+  @@map("users")
+}
+
+model Ingredient {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @map("user_id")
+  name               String
+  unit               String
+  currentStock       Decimal  @default(0) @map("current_stock") @db.Decimal(12, 3)
+  lowStockThreshold  Decimal  @default(0) @map("low_stock_threshold") @db.Decimal(12, 3)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipes   Recipe[]
+  suppliers IngredientSupplier[]
+
+  @@map("ingredients")
+}
+
+model Supplier {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredients IngredientSupplier[]
+
+  @@map("suppliers")
+}
+
+model IngredientSupplier {
+  id           Int @id @default(autoincrement())
+  ingredientId Int @map("ingredient_id")
+  supplierId   Int @map("supplier_id")
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  supplier   Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([ingredientId, supplierId])
+  @@map("ingredient_suppliers")
+}
+
+model MenuItem {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  name        String
+  description String?
+  category    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipes Recipe[]
+  sales   SalesLog[]
+
+  @@map("menu_items")
+}
+
+model Recipe {
+  id              Int     @id @default(autoincrement())
+  menuItemId      Int     @map("menu_item_id")
+  ingredientId    Int     @map("ingredient_id")
+  quantityNeeded  Decimal @map("quantity_needed") @db.Decimal(12, 3)
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, ingredientId])
+  @@map("recipes")
+}
+
+model SalesLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  menuItemId   Int      @map("menu_item_id")
+  quantitySold Int      @map("quantity_sold")
+  soldAt       DateTime @default(now()) @map("sold_at")
+  notes        String?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@map("sales_log")
+}
+
+model RestockDraft {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("restock_drafts")
+}

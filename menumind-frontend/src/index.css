@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+body {
+  background: #F4ECDC;
+  color: #141414;
+  font-family: Manrope, system-ui, sans-serif;
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle paper grain — felt, not seen */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.45 0 0 0 0 0.32 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+#root { position: relative; z-index: 1; }
+
+/* Receipt-style perforated edge — used by ticket components */
+.perforated-bottom {
+  -webkit-mask-image: radial-gradient(circle 6px at 6px 100%, transparent 5px, black 6px);
+  mask-image: radial-gradient(circle 6px at 6px 100%, transparent 5px, black 6px);
+  -webkit-mask-size: 14px 12px;
+  mask-size: 14px 12px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-position: bottom;
+  mask-position: bottom;
+}
+
+/* Custom scrollbar — subtle */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #C9BFA6; border-radius: 5px; }
+*::-webkit-scrollbar-thumb:hover { background: #B8531C; }
+
+@layer components {
+  .input {
+    @apply w-full bg-cream border border-line rounded-sm px-3 py-2.5 text-ink font-body
+           focus:outline-none focus:border-copper focus:ring-2 focus:ring-copper/20
+           placeholder:text-ash/60 transition-colors;
+  }
+  .input-label {
+    @apply block text-[11px] font-semibold uppercase tracking-signage text-ash mb-1.5;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-copper hover:bg-copper-dark
+           text-cream font-display font-bold uppercase tracking-signage text-sm
+           px-5 py-2.5 rounded-sm transition-colors shadow-pos;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-cream hover:bg-line
+           text-navy font-display font-bold uppercase tracking-signage text-sm
+           px-4 py-2 rounded-sm border border-line transition-colors;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 text-ash hover:text-copper
+           font-display font-bold uppercase tracking-signage text-sm
+           px-3 py-2 transition-colors;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-signage text-copper;
+  }
+  .panel {
+    @apply bg-cream border border-line rounded-sm shadow-ticket;
+  }
+}
