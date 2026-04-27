@@ -196,7 +196,7 @@ export default function MenuItems() {
                 type="button"
                 onClick={addRecipeRow}
                 disabled={ingredients.length === 0}
-                className="btn-ghost px-2 py-1 text-xs disabled:opacity-50"
+                className="btn-add-inline"
               >
                 + Add ingredient
               </button>
@@ -283,9 +283,9 @@ export default function MenuItems() {
                 </ul>
               )}
             </div>
-            <div className="mt-4 pt-3 border-t border-line flex gap-2 text-xs">
-              <button onClick={() => startEdit(item)} className="btn-ghost px-2 py-1">Edit</button>
-              <button onClick={() => remove(item.id)} className="btn-ghost px-2 py-1 hover:text-tomato">Delete</button>
+            <div className="mt-4 pt-3 border-t border-line flex gap-2">
+              <button onClick={() => startEdit(item)} className="btn-row-edit">Edit</button>
+              <button onClick={() => remove(item.id)} className="btn-row-delete">Delete</button>
             </div>
           </div>
         ))}

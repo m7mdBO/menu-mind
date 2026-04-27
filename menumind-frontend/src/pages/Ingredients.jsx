@@ -268,9 +268,9 @@ export default function Ingredients() {
                 <div className={`${st.bar} h-full`} style={{ width: `${ratio * 100}%` }} />
               </div>
 
-              <div className="mt-4 flex gap-2 text-xs">
-                <button onClick={() => startEdit(item)} className="btn-ghost px-2 py-1">Edit</button>
-                <button onClick={() => remove(item.id)} className="btn-ghost px-2 py-1 hover:text-tomato">Delete</button>
+              <div className="mt-4 flex gap-2">
+                <button onClick={() => startEdit(item)} className="btn-row-edit">Edit</button>
+                <button onClick={() => remove(item.id)} className="btn-row-delete">Delete</button>
               </div>
             </div>
           );

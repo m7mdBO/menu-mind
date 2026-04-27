@@ -69,6 +69,22 @@ body::before {
            font-display font-bold uppercase tracking-signage text-sm
            px-3 py-2 transition-colors;
   }
+  .btn-row-edit {
+    @apply inline-flex items-center justify-center gap-1 bg-navy hover:bg-copper
+           text-cream font-display font-bold uppercase tracking-signage text-xs
+           px-3 py-1.5 rounded-sm transition-colors;
+  }
+  .btn-row-delete {
+    @apply inline-flex items-center justify-center gap-1 bg-cream border border-tomato
+           text-tomato hover:bg-tomato hover:text-cream
+           font-display font-bold uppercase tracking-signage text-xs
+           px-3 py-1.5 rounded-sm transition-colors;
+  }
+  .btn-add-inline {
+    @apply inline-flex items-center justify-center gap-1 bg-copper hover:bg-copper-dark
+           text-cream font-display font-bold uppercase tracking-signage text-xs
+           px-3 py-1.5 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-signage text-copper;
   }

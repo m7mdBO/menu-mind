@@ -29,10 +29,23 @@ router.post('/', async (req, res) => {
   const { name, unit, currentStock, lowStockThreshold, supplierIds } = req.body || {};
   if (!name || !unit) return res.status(400).json({ error: 'name and unit required' });
 
+  const trimmed = String(name).trim();
+  if (!trimmed) return res.status(400).json({ error: 'name and unit required' });
+
+  const dup = await prisma.ingredient.findFirst({
+    where: {
+      userId: req.userId,
+      name: { equals: trimmed, mode: 'insensitive' },
+    },
+  });
+  if (dup) {
+    return res.status(409).json({ error: `An ingredient named "${dup.name}" already exists` });
+  }
+
   const created = await prisma.ingredient.create({
     data: {
       userId: req.userId,
-      name,
+      name: trimmed,
       unit,
       currentStock: currentStock ?? 0,
       lowStockThreshold: lowStockThreshold ?? 0,
@@ -52,11 +65,30 @@ router.put('/:id', async (req, res) => {
 
   const { name, unit, currentStock, lowStockThreshold, supplierIds } = req.body || {};
 
+  let finalName = existing.name;
+  if (name !== undefined && name !== null) {
+    const trimmed = String(name).trim();
+    if (!trimmed) return res.status(400).json({ error: 'name cannot be empty' });
+    if (trimmed.toLowerCase() !== existing.name.toLowerCase()) {
+      const dup = await prisma.ingredient.findFirst({
+        where: {
+          userId: req.userId,
+          name: { equals: trimmed, mode: 'insensitive' },
+          NOT: { id },
+        },
+      });
+      if (dup) {
+        return res.status(409).json({ error: `An ingredient named "${dup.name}" already exists` });
+      }
+    }
+    finalName = trimmed;
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const updated = await tx.ingredient.update({
       where: { id },
       data: {
-        name: name ?? existing.name,
+        name: finalName,
         unit: unit ?? existing.unit,
         currentStock: currentStock ?? existing.currentStock,
         lowStockThreshold: lowStockThreshold ?? existing.lowStockThreshold,
