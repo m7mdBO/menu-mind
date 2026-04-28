@@ -147,7 +147,7 @@ export default function Dashboard() {
               ))}
             </ul>
             <div className="px-5 py-3 border-t border-line">
-              <Link to="/ai-restock" className="btn-primary text-xs w-full">
+              <Link to="/forecast" className="btn-primary text-xs w-full">
                 Fire restock email →
               </Link>
             </div>

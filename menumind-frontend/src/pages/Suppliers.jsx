@@ -5,6 +5,7 @@ const empty = { name: '', email: '', phone: '', notes: '' };
 
 export default function Suppliers() {
   const [items, setItems] = useState([]);
+  const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
   const [error, setError] = useState('');
@@ -51,6 +52,13 @@ export default function Suppliers() {
         <button onClick={startCreate} className="btn-primary">+ Add supplier</button>
       </div>
 
+      <input
+        placeholder="Search suppliers by name…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="input"
+      />
+
       {editing !== null && (
         <form onSubmit={save} className="panel p-6 space-y-5">
           <div>
@@ -88,14 +96,23 @@ export default function Suppliers() {
         </form>
       )}
 
+      {(() => {
+        const q = search.toLowerCase().trim();
+        const visible = q ? items.filter((s) => s.name.toLowerCase().includes(q)) : items;
+        return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.length === 0 && (
+        {items.length === 0 ? (
           <div className="panel p-8 text-center text-ash md:col-span-2">
             <div className="font-display text-2xl text-navy mb-1">No suppliers yet</div>
             <p className="text-sm">Add suppliers so the AI can group restock emails.</p>
           </div>
-        )}
-        {items.map((s) => (
+        ) : visible.length === 0 ? (
+          <div className="panel p-8 text-center text-ash md:col-span-2">
+            <div className="font-display text-2xl text-navy mb-1">No matches</div>
+            <p className="text-sm">No supplier matches "{search}".</p>
+          </div>
+        ) : null}
+        {visible.map((s) => (
           <div key={s.id} className="panel p-5 relative overflow-hidden">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-copper" />
             <div className="flex items-start justify-between">
@@ -127,6 +144,8 @@ export default function Suppliers() {
           </div>
         ))}
       </div>
+        );
+      })()}
     </div>
   );
 }

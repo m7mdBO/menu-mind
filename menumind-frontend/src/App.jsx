@@ -9,7 +9,7 @@ import Ingredients from './pages/Ingredients';
 import Suppliers from './pages/Suppliers';
 import MenuItems from './pages/MenuItems';
 import Sales from './pages/Sales';
-import AIRestock from './pages/AIRestock';
+import Forecast from './pages/Forecast';
 
 export default function App() {
   return (
@@ -31,7 +31,7 @@ export default function App() {
             <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/menu-items" element={<MenuItems />} />
             <Route path="/sales" element={<Sales />} />
-            <Route path="/ai-restock" element={<AIRestock />} />
+            <Route path="/forecast" element={<Forecast />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

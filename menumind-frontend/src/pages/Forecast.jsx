@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 
-export default function AIRestock() {
+export default function Forecast() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [savedDrafts, setSavedDrafts] = useState([]);
   const [savedMsg, setSavedMsg] = useState('');
+  const [windowDays, setWindowDays] = useState(7);
 
   async function loadDrafts() {
     const { data } = await api.get('/ai/restock-drafts');
@@ -20,7 +21,7 @@ export default function AIRestock() {
     setError('');
     setResult(null);
     try {
-      const { data } = await api.post('/ai/predict-restock');
+      const { data } = await api.post('/ai/predict-restock', { windowDays });
       setResult(data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to generate');
@@ -48,12 +49,39 @@ export default function AIRestock() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-navy pb-4">
         <div>
-          <div className="eyebrow">Predictive Restock</div>
-          <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">Restock AI</h1>
+          <div className="eyebrow">AI Predictions</div>
+          <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">Forecast</h1>
         </div>
         <button onClick={generate} disabled={loading} className="btn-primary disabled:opacity-50">
           {loading ? 'Analyzing the line…' : 'Run prediction →'}
         </button>
+      </div>
+
+      <div className="panel p-4 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] uppercase tracking-signage text-ash font-semibold">
+          Sales window
+        </span>
+        <div className="flex gap-1.5 bg-navy/5 p-1.5 rounded-sm">
+          {[
+            { d: 1, label: 'Last 1 day' },
+            { d: 3, label: 'Last 3 days' },
+            { d: 7, label: 'Last 7 days' },
+          ].map(({ d, label }) => (
+            <button
+              key={d}
+              onClick={() => setWindowDays(d)}
+              disabled={loading}
+              className={`px-4 py-2 rounded-sm text-[11px] font-display font-bold uppercase tracking-signage transition-colors disabled:opacity-50 ${
+                windowDays === d ? 'bg-navy text-cream shadow-pos' : 'text-navy hover:text-copper'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="text-[11px] text-ash">
+          The AI averages consumption across this many days of sales to project days remaining.
+        </span>
       </div>
 
       <div className="panel p-5 bg-navy text-cream relative overflow-hidden">
@@ -81,6 +109,12 @@ export default function AIRestock() {
           <div className="panel p-5">
             <div className="eyebrow">Summary</div>
             <div className="font-display font-bold text-2xl text-navy mt-1">{result.summary}</div>
+            {typeof result.salesCount === 'number' && (
+              <div className="text-[11px] uppercase tracking-signage text-ash mt-2">
+                Based on {result.salesCount} sale{result.salesCount === 1 ? '' : 's'} from the last{' '}
+                {result.windowDays} day{result.windowDays === 1 ? '' : 's'}
+              </div>
+            )}
           </div>
 
           {result.atRisk && result.atRisk.length > 0 && (

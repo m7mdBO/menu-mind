@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
+import BulkStockImport from '../components/BulkStockImport';
 
 const UNITS = ['kg', 'g', 'L', 'mL', 'pieces'];
 const empty = { name: '', unit: 'kg', currentStock: 0, lowStockThreshold: 0, supplierIds: [] };
@@ -12,6 +13,12 @@ export default function Ingredients() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
   const [error, setError] = useState('');
+  const [mode, setMode] = useState('manual');
+  const [restockingId, setRestockingId] = useState(null);
+  const [restockQty, setRestockQty] = useState('');
+  const [restockBusy, setRestockBusy] = useState(false);
+  const [restockError, setRestockError] = useState('');
+  const [restockSuccess, setRestockSuccess] = useState('');
 
   async function load() {
     const params = {};
@@ -64,6 +71,49 @@ export default function Ingredients() {
     load();
   }
 
+  function startRestock(id) {
+    setRestockingId(id);
+    setRestockQty('');
+    setRestockError('');
+    setRestockSuccess('');
+  }
+
+  function cancelRestock() {
+    setRestockingId(null);
+    setRestockQty('');
+    setRestockError('');
+  }
+
+  async function confirmRestock(item) {
+    const qty = Number(restockQty);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setRestockError('Enter a positive quantity.');
+      return;
+    }
+    setRestockBusy(true);
+    setRestockError('');
+    try {
+      await api.post('/ingredients/bulk-commit', {
+        rows: [{
+          index: 0,
+          originalName: item.name,
+          action: 'topup',
+          ingredientId: item.id,
+          quantity: qty,
+        }],
+      });
+      setRestockingId(null);
+      setRestockQty('');
+      setRestockSuccess(`✓ Added ${qty} ${item.unit} to ${item.name}`);
+      setTimeout(() => setRestockSuccess(''), 2500);
+      load();
+    } catch (err) {
+      setRestockError(err.response?.data?.error || 'Restock failed');
+    } finally {
+      setRestockBusy(false);
+    }
+  }
+
   function toggleSupplier(id) {
     setForm((f) =>
       f.supplierIds.includes(id)
@@ -87,9 +137,41 @@ export default function Ingredients() {
           <div className="eyebrow">Walk-in & Pantry</div>
           <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">Stock</h1>
         </div>
-        <button onClick={startCreate} className="btn-primary">+ Add ingredient</button>
+        {mode === 'manual' && (
+          <button onClick={startCreate} className="btn-primary">+ Add ingredient</button>
+        )}
       </div>
 
+      <div className="flex gap-1.5 bg-navy/5 p-1.5 rounded-sm w-fit">
+        <button
+          onClick={() => setMode('manual')}
+          className={`px-7 py-3 rounded-sm text-sm font-display font-bold uppercase tracking-signage transition-colors ${
+            mode === 'manual' ? 'bg-navy text-cream shadow-pos' : 'text-navy hover:text-copper'
+          }`}
+        >
+          Stock
+        </button>
+        <button
+          onClick={() => setMode('restock')}
+          className={`px-7 py-3 rounded-sm text-sm font-display font-bold uppercase tracking-signage transition-colors ${
+            mode === 'restock' ? 'bg-navy text-cream shadow-pos' : 'text-navy hover:text-copper'
+          }`}
+        >
+          Restock
+        </button>
+      </div>
+
+      {restockSuccess && mode === 'manual' && (
+        <div className="bg-sage/15 border-l-4 border-sage px-3 py-2 text-sage font-medium text-sm">
+          {restockSuccess}
+        </div>
+      )}
+
+      {mode === 'restock' && (
+        <BulkStockImport ingredients={items} onImported={load} />
+      )}
+
+      {mode === 'manual' && (
       <div className="flex flex-col sm:flex-row gap-3">
         <input
           placeholder="Search ingredients…"
@@ -103,8 +185,9 @@ export default function Ingredients() {
           <option value="ok">Above threshold</option>
         </select>
       </div>
+      )}
 
-      {editing !== null && (
+      {mode === 'manual' && editing !== null && (
         <form onSubmit={save} className="panel p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
@@ -225,6 +308,7 @@ export default function Ingredients() {
       )}
 
       {/* List as cards */}
+      {mode === 'manual' && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.length === 0 && (
           <div className="panel p-8 text-center text-ash md:col-span-2">
@@ -268,14 +352,50 @@ export default function Ingredients() {
                 <div className={`${st.bar} h-full`} style={{ width: `${ratio * 100}%` }} />
               </div>
 
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => startEdit(item)} className="btn-row-edit">Edit</button>
-                <button onClick={() => remove(item.id)} className="btn-row-delete">Delete</button>
-              </div>
+              {restockingId === item.id ? (
+                <div className="mt-4 bg-bone p-3 rounded-sm border border-line space-y-2">
+                  <div className="text-[10px] uppercase tracking-signage text-ash">Add to stock</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      autoFocus
+                      placeholder="Quantity"
+                      value={restockQty}
+                      onChange={(e) => setRestockQty(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') confirmRestock(item);
+                        if (e.key === 'Escape') cancelRestock();
+                      }}
+                      className="input flex-1 font-mono"
+                    />
+                    <span className="font-mono text-xs text-ash w-10 text-right">{item.unit}</span>
+                    <button
+                      onClick={() => confirmRestock(item)}
+                      disabled={restockBusy}
+                      className="btn-add-inline"
+                    >
+                      {restockBusy ? '…' : 'Add'}
+                    </button>
+                    <button onClick={cancelRestock} className="btn-ghost px-2 py-1">Cancel</button>
+                  </div>
+                  {restockError && (
+                    <div className="text-[11px] text-tomato font-medium">{restockError}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => startRestock(item.id)} className="btn-add-inline">+ Restock</button>
+                  <button onClick={() => startEdit(item)} className="btn-row-edit">Edit</button>
+                  <button onClick={() => remove(item.id)} className="btn-row-delete">Delete</button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+      )}
     </div>
   );
 }

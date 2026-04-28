@@ -7,7 +7,7 @@ const navItems = [
   { to: '/menu-items', label: 'Menu' },
   { to: '/suppliers', label: 'Suppliers' },
   { to: '/sales', label: 'Sales' },
-  { to: '/ai-restock', label: 'Restock AI' },
+  { to: '/forecast', label: 'Forecast' },
 ];
 
 export default function Layout() {

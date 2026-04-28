@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
+import SearchableSelect from '../components/SearchableSelect';
 
 const CATEGORY_PRESETS = ['Main', 'Side', 'Appetizer', 'Dessert', 'Drink'];
 
@@ -15,6 +16,7 @@ export default function MenuItems() {
   const [items, setItems] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [nameSearch, setNameSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
@@ -31,6 +33,9 @@ export default function MenuItems() {
   }, [categoryFilter]);
 
   const categories = Array.from(new Set(items.map((i) => i.category).filter(Boolean)));
+  const visibleItems = nameSearch.trim()
+    ? items.filter((i) => i.name.toLowerCase().includes(nameSearch.toLowerCase().trim()))
+    : items;
 
   function startCreate() {
     setEditing('new');
@@ -120,6 +125,13 @@ export default function MenuItems() {
         </div>
         <button onClick={startCreate} className="btn-primary">+ Add menu item</button>
       </div>
+
+      <input
+        placeholder="Search menu items by name…"
+        value={nameSearch}
+        onChange={(e) => setNameSearch(e.target.value)}
+        className="input"
+      />
 
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -211,15 +223,14 @@ export default function MenuItems() {
                   const ing = ingredients.find((i) => i.id === Number(r.ingredientId));
                   return (
                     <div key={idx} className="flex items-center gap-2 bg-bone p-2 rounded-sm">
-                      <select
-                        value={r.ingredientId}
-                        onChange={(e) => updateRecipe(idx, { ingredientId: Number(e.target.value) })}
-                        className="input flex-1"
-                      >
-                        {ingredients.map((i) => (
-                          <option key={i.id} value={i.id}>{i.name}</option>
-                        ))}
-                      </select>
+                      <div className="flex-1">
+                        <SearchableSelect
+                          value={Number(r.ingredientId) || 0}
+                          onChange={(id) => updateRecipe(idx, { ingredientId: id })}
+                          options={ingredients.map((i) => ({ id: i.id, name: i.name }))}
+                          placeholder="Search ingredient…"
+                        />
+                      </div>
                       <input
                         type="number"
                         step="0.001"
@@ -249,13 +260,18 @@ export default function MenuItems() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.length === 0 && (
+        {items.length === 0 ? (
           <div className="panel p-8 text-center text-ash md:col-span-2 lg:col-span-3">
             <div className="font-display text-2xl text-navy mb-1">No menu items yet</div>
             <p className="text-sm">Add a menu item and define its recipe.</p>
           </div>
+        ) : visibleItems.length === 0 && (
+          <div className="panel p-8 text-center text-ash md:col-span-2 lg:col-span-3">
+            <div className="font-display text-2xl text-navy mb-1">No matches</div>
+            <p className="text-sm">Nothing matches "{nameSearch}".</p>
+          </div>
         )}
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <div key={item.id} className="panel p-5 flex flex-col">
             <div className="flex items-start justify-between gap-3">
               <div>

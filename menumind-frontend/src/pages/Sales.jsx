@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
+import BulkSalesImport from '../components/BulkSalesImport';
 
 function categoryColor(cat) {
   const palette = {
@@ -117,6 +118,8 @@ export default function Sales() {
   const [cardError, setCardError] = useState({ id: null, message: '' });
   const [success, setSuccess] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [nameSearch, setNameSearch] = useState('');
+  const [mode, setMode] = useState('manual');
 
   async function load() {
     const [salesRes, miRes] = await Promise.all([api.get('/sales'), api.get('/menu-items')]);
@@ -145,7 +148,10 @@ export default function Sales() {
   }
 
   const categories = Array.from(new Set(menuItems.map((i) => i.category).filter(Boolean)));
-  const visibleItems = categoryFilter ? menuItems.filter((m) => m.category === categoryFilter) : menuItems;
+  const q = nameSearch.toLowerCase().trim();
+  const visibleItems = menuItems
+    .filter((m) => !categoryFilter || m.category === categoryFilter)
+    .filter((m) => !q || m.name.toLowerCase().includes(q));
 
   return (
     <div className="space-y-6">
@@ -161,8 +167,40 @@ export default function Sales() {
         )}
       </div>
 
+      <div className="flex gap-1.5 bg-navy/5 p-1.5 rounded-sm w-fit">
+        <button
+          onClick={() => setMode('manual')}
+          className={`px-7 py-3 rounded-sm text-sm font-display font-bold uppercase tracking-signage transition-colors ${
+            mode === 'manual' ? 'bg-navy text-cream shadow-pos' : 'text-navy hover:text-copper'
+          }`}
+        >
+          Manual
+        </button>
+        <button
+          onClick={() => setMode('bulk')}
+          className={`px-7 py-3 rounded-sm text-sm font-display font-bold uppercase tracking-signage transition-colors ${
+            mode === 'bulk' ? 'bg-navy text-cream shadow-pos' : 'text-navy hover:text-copper'
+          }`}
+        >
+          Bulk Import
+        </button>
+      </div>
+
+      {mode === 'bulk' && (
+        <BulkSalesImport menuItems={menuItems} onImported={load} />
+      )}
+
+      {mode === 'manual' && (
+        <input
+          placeholder="Search menu items by name…"
+          value={nameSearch}
+          onChange={(e) => setNameSearch(e.target.value)}
+          className="input"
+        />
+      )}
+
       {/* Category filter chips */}
-      {categories.length > 0 && (
+      {mode === 'manual' && categories.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setCategoryFilter('')}
@@ -187,10 +225,15 @@ export default function Sales() {
       )}
 
       {/* POS card grid */}
-      {menuItems.length === 0 ? (
+      {mode === 'manual' && (menuItems.length === 0 ? (
         <div className="panel p-8 text-center text-ash">
           <div className="font-display text-2xl text-navy mb-1">No menu items yet</div>
           <p className="text-sm">Add menu items to start logging sales.</p>
+        </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="panel p-8 text-center text-ash">
+          <div className="font-display text-2xl text-navy mb-1">No matches</div>
+          <p className="text-sm">Nothing matches your filters.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -206,7 +249,7 @@ export default function Sales() {
             />
           ))}
         </div>
-      )}
+      ))}
 
       {/* Sales history — kitchen ticket strip */}
       <div className="panel">

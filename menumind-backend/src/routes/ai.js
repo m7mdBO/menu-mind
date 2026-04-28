@@ -8,20 +8,9 @@ router.use(authRequired);
 
 const MODEL = 'claude-sonnet-4-6';
 
-function buildConsumptionStats(ingredients, sales) {
+function buildConsumptionStats(ingredients, sales, windowDays) {
   const consumption = new Map();
   for (const ing of ingredients) consumption.set(ing.id, 0);
-
-  if (sales.length === 0) {
-    return { perIngredient: consumption, daysSpan: 0 };
-  }
-
-  const oldest = sales[sales.length - 1].soldAt;
-  const newest = sales[0].soldAt;
-  const daysSpan = Math.max(
-    1,
-    (new Date(newest).getTime() - new Date(oldest).getTime()) / (1000 * 60 * 60 * 24),
-  );
 
   for (const sale of sales) {
     for (const recipe of sale.menuItem.recipes) {
@@ -30,7 +19,7 @@ function buildConsumptionStats(ingredients, sales) {
     }
   }
 
-  return { perIngredient: consumption, daysSpan };
+  return { perIngredient: consumption, daysSpan: Math.max(1, windowDays) };
 }
 
 router.post('/predict-restock', async (req, res) => {
@@ -39,6 +28,9 @@ router.post('/predict-restock', async (req, res) => {
   }
 
   const userId = req.userId;
+  const requested = Number(req.body?.windowDays);
+  const windowDays = [1, 3, 7].includes(requested) ? requested : 7;
+  const cutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
 
   const [ingredients, sales] = await Promise.all([
     prisma.ingredient.findMany({
@@ -46,9 +38,8 @@ router.post('/predict-restock', async (req, res) => {
       include: { suppliers: { include: { supplier: true } } },
     }),
     prisma.salesLog.findMany({
-      where: { userId },
+      where: { userId, soldAt: { gte: cutoff } },
       orderBy: { soldAt: 'desc' },
-      take: 10,
       include: { menuItem: { include: { recipes: true } } },
     }),
   ]);
@@ -57,7 +48,7 @@ router.post('/predict-restock', async (req, res) => {
     return res.status(400).json({ error: 'No ingredients in inventory yet' });
   }
 
-  const { perIngredient, daysSpan } = buildConsumptionStats(ingredients, sales);
+  const { perIngredient, daysSpan } = buildConsumptionStats(ingredients, sales, windowDays);
 
   const inventoryReport = ingredients.map((ing) => {
     const totalUsed = perIngredient.get(ing.id) || 0;
@@ -85,6 +76,8 @@ router.post('/predict-restock', async (req, res) => {
   if (atRisk.length === 0) {
     return res.json({
       summary: 'All ingredients are above threshold and projected to last beyond 48 hours.',
+      windowDays,
+      salesCount: sales.length,
       atRiskCount: 0,
       draft: null,
     });
@@ -92,7 +85,7 @@ router.post('/predict-restock', async (req, res) => {
 
   const prompt = `You are a kitchen inventory assistant for a cloud kitchen. Based on current stock levels and recent sales, draft a professional restock order email.
 
-Current inventory analysis (last ${daysSpan.toFixed(1)} days of sales):
+Current inventory analysis (last ${windowDays} day${windowDays === 1 ? '' : 's'} of sales, ${sales.length} sale${sales.length === 1 ? '' : 's'}):
 ${JSON.stringify(inventoryReport, null, 2)}
 
 At-risk ingredients (will run out within 48 hours OR already below threshold):
@@ -120,6 +113,8 @@ Output only the email text, no preamble or explanation.`;
 
   res.json({
     summary: `${atRisk.length} ingredient(s) need restocking`,
+    windowDays,
+    salesCount: sales.length,
     atRiskCount: atRisk.length,
     atRisk,
     draft,
