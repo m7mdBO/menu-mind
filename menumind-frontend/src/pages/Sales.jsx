@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../lib/api';
 import BulkSalesImport from '../components/BulkSalesImport';
 
@@ -13,18 +13,90 @@ function categoryColor(cat) {
   return palette[cat] || 'bg-ash text-cream';
 }
 
-function MenuCard({ item, isActive, onActivate, onLog, onCancel, error }) {
+function MenuCard({ item, ingredients, isActive, onActivate, onLog, onCancel, error }) {
   const [qty, setQty] = useState(1);
   const [logging, setLogging] = useState(false);
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [removedIds, setRemovedIds] = useState(() => new Set());
+  const [extras, setExtras] = useState([]);
+  const [extraIngredientId, setExtraIngredientId] = useState('');
+  const [extraQty, setExtraQty] = useState('1');
+
+  function reset() {
+    setQty(1);
+    setShowCustomize(false);
+    setRemovedIds(new Set());
+    setExtras([]);
+    setExtraIngredientId('');
+    setExtraQty('1');
+  }
+
+  const recipeIngredientIds = useMemo(
+    () => new Set(item.recipes.map((r) => r.ingredient.id)),
+    [item.recipes],
+  );
+
+  const extraOptions = useMemo(
+    () =>
+      ingredients
+        .filter((ing) => !recipeIngredientIds.has(ing.id) && !extras.some((e) => e.ingredientId === ing.id))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [ingredients, recipeIngredientIds, extras],
+  );
+
+  function toggleRemove(id) {
+    setRemovedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function addExtra() {
+    const id = Number(extraIngredientId);
+    const q = Number(extraQty);
+    if (!Number.isFinite(id) || id <= 0) return;
+    if (!Number.isFinite(q) || q <= 0) return;
+    const ing = ingredients.find((i) => i.id === id);
+    if (!ing) return;
+    setExtras((prev) => [...prev, { ingredientId: id, name: ing.name, unit: ing.unit, quantity: q }]);
+    setExtraIngredientId('');
+    setExtraQty('1');
+  }
+
+  function removeExtra(id) {
+    setExtras((prev) => prev.filter((e) => e.ingredientId !== id));
+  }
+
+  const allRecipeRemoved = recipeIngredientIds.size > 0 && removedIds.size === recipeIngredientIds.size;
+
+  const noteParts = [];
+  for (const r of item.recipes) {
+    if (removedIds.has(r.ingredient.id)) noteParts.push(`no ${r.ingredient.name.toLowerCase()}`);
+  }
+  for (const ex of extras) {
+    noteParts.push(`+${ex.quantity} ${ex.name.toLowerCase()}`);
+  }
+  const notePreview = noteParts.join(' · ');
 
   async function fire() {
+    if (allRecipeRemoved) return;
     setLogging(true);
     try {
-      await onLog(item.id, qty);
-      setQty(1);
+      await onLog(item.id, qty, {
+        removedIngredientIds: Array.from(removedIds),
+        extras: extras.map((e) => ({ ingredientId: e.ingredientId, quantity: e.quantity })),
+      });
+      reset();
     } finally {
       setLogging(false);
     }
+  }
+
+  function cancel() {
+    reset();
+    onCancel();
   }
 
   if (isActive) {
@@ -39,7 +111,7 @@ function MenuCard({ item, isActive, onActivate, onLog, onCancel, error }) {
               </span>
             )}
           </div>
-          <button onClick={onCancel} className="text-ash hover:text-tomato text-xs font-display font-bold uppercase tracking-signage">
+          <button onClick={cancel} className="text-ash hover:text-tomato text-xs font-display font-bold uppercase tracking-signage">
             ✕ Close
           </button>
         </div>
@@ -69,13 +141,144 @@ function MenuCard({ item, isActive, onActivate, onLog, onCancel, error }) {
           </button>
         </div>
 
+        {item.recipes.length > 0 && (
+          <div className="border border-line rounded-sm">
+            <button
+              type="button"
+              onClick={() => setShowCustomize((s) => !s)}
+              className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-display font-bold uppercase tracking-signage text-navy hover:bg-bone/60 transition-colors"
+            >
+              <span>
+                Customize order
+                {(removedIds.size > 0 || extras.length > 0) && (
+                  <span className="ml-2 inline-block bg-copper text-cream font-mono px-1.5 py-0.5 rounded-sm text-[10px]">
+                    {removedIds.size + extras.length}
+                  </span>
+                )}
+              </span>
+              <span className="text-copper">{showCustomize ? '▲' : '▼'}</span>
+            </button>
+
+            {showCustomize && (
+              <div className="px-3 pb-3 pt-1 space-y-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-signage text-ash mb-1.5">Recipe ingredients</div>
+                  <div className="space-y-1">
+                    {item.recipes.map((r) => {
+                      const removed = removedIds.has(r.ingredient.id);
+                      return (
+                        <label
+                          key={r.ingredient.id}
+                          className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-bone/60 ${
+                            removed ? 'opacity-50' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={!removed}
+                              onChange={() => toggleRemove(r.ingredient.id)}
+                              className="accent-copper"
+                            />
+                            <span className={`text-sm text-navy truncate ${removed ? 'line-through' : ''}`}>
+                              {r.ingredient.name}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[11px] text-ash shrink-0">
+                            {Number(r.quantityNeeded)} {r.ingredient.unit}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-signage text-ash mb-1.5">Extras</div>
+                  {extras.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {extras.map((ex) => (
+                        <div key={ex.ingredientId} className="flex items-center justify-between gap-2 px-2 py-1.5 bg-mustard/15 rounded-sm">
+                          <span className="text-sm text-navy truncate">+ {ex.name}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono text-[11px] text-ash">{ex.quantity} {ex.unit}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeExtra(ex.ingredientId)}
+                              className="text-tomato text-xs hover:underline"
+                            >
+                              remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {extraOptions.length > 0 ? (
+                    <div className="flex gap-2">
+                      <select
+                        value={extraIngredientId}
+                        onChange={(e) => setExtraIngredientId(e.target.value)}
+                        className="input flex-1 text-sm"
+                      >
+                        <option value="">Add an extra…</option>
+                        {extraOptions.map((ing) => (
+                          <option key={ing.id} value={ing.id}>
+                            {ing.name} ({ing.unit})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={extraQty}
+                        onChange={(e) => setExtraQty(e.target.value)}
+                        className="input w-24 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={addExtra}
+                        disabled={!extraIngredientId}
+                        className="btn-secondary px-3 disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-ash italic">All ingredients already in recipe or added.</div>
+                  )}
+                </div>
+
+                {qty > 1 && (removedIds.size > 0 || extras.length > 0) && (
+                  <div className="text-[11px] text-ash bg-bone/60 px-2 py-1.5 rounded-sm">
+                    Applies to all {qty} units in this punch.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {notePreview && (
+          <div className="text-[11px] text-copper-dark bg-mustard/15 border-l-4 border-mustard px-3 py-2 font-medium italic">
+            {notePreview}
+          </div>
+        )}
+
+        {allRecipeRemoved && (
+          <div className="bg-tomato/10 border-l-4 border-tomato px-3 py-2 text-xs text-tomato font-medium">
+            You can't remove every ingredient.
+          </div>
+        )}
+
         {error && (
           <div className="bg-tomato/10 border-l-4 border-tomato px-3 py-2 text-xs text-tomato font-medium">
             {error}
           </div>
         )}
 
-        <button onClick={fire} disabled={logging} className="btn-primary disabled:opacity-50">
+        <button onClick={fire} disabled={logging || allRecipeRemoved} className="btn-primary disabled:opacity-50">
           {logging ? 'Firing…' : `Punch sale × ${qty}`}
         </button>
       </div>
@@ -114,6 +317,7 @@ function MenuCard({ item, isActive, onActivate, onLog, onCancel, error }) {
 export default function Sales() {
   const [sales, setSales] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [ingredients, setIngredients] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [cardError, setCardError] = useState({ id: null, message: '' });
   const [success, setSuccess] = useState('');
@@ -122,18 +326,28 @@ export default function Sales() {
   const [mode, setMode] = useState('manual');
 
   async function load() {
-    const [salesRes, miRes] = await Promise.all([api.get('/sales'), api.get('/menu-items')]);
+    const [salesRes, miRes, ingRes] = await Promise.all([
+      api.get('/sales'),
+      api.get('/menu-items'),
+      api.get('/ingredients'),
+    ]);
     setSales(salesRes.data);
     setMenuItems(miRes.data);
+    setIngredients(ingRes.data);
   }
 
   useEffect(() => { load(); }, []);
 
-  async function logSale(menuItemId, quantity) {
+  async function logSale(menuItemId, quantity, mods = {}) {
     setCardError({ id: null, message: '' });
     setSuccess('');
     try {
-      const { data } = await api.post('/sales', { menuItemId, quantitySold: quantity });
+      const { data } = await api.post('/sales', {
+        menuItemId,
+        quantitySold: quantity,
+        removedIngredientIds: mods.removedIngredientIds || [],
+        extras: mods.extras || [],
+      });
       setSuccess(`✓ Logged ${data.menuItem.name} × ${data.quantitySold}`);
       setActiveId(null);
       setTimeout(() => setSuccess(''), 2500);
@@ -241,6 +455,7 @@ export default function Sales() {
             <MenuCard
               key={item.id}
               item={item}
+              ingredients={ingredients}
               isActive={activeId === item.id}
               onActivate={() => { setActiveId(item.id); setCardError({ id: null, message: '' }); }}
               onCancel={() => { setActiveId(null); setCardError({ id: null, message: '' }); }}
@@ -265,12 +480,19 @@ export default function Sales() {
           <ul className="divide-y divide-line/60">
             {sales.map((s) => (
               <li key={s.id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <span className="font-mono text-xs text-copper">#{String(s.id).padStart(4, '0')}</span>
-                  <span className="font-medium text-ink truncate">{s.menuItem.name}</span>
-                  <span className="font-mono text-xs bg-navy text-cream px-2 py-0.5 rounded-sm shrink-0">
-                    ×{s.quantitySold}
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-ink truncate">{s.menuItem.name}</span>
+                      <span className="font-mono text-xs bg-navy text-cream px-2 py-0.5 rounded-sm shrink-0">
+                        ×{s.quantitySold}
+                      </span>
+                    </div>
+                    {s.notes && (
+                      <span className="text-[11px] text-copper-dark italic truncate">{s.notes}</span>
+                    )}
+                  </div>
                 </div>
                 <span className="text-[11px] text-ash uppercase tracking-signage shrink-0">
                   {new Date(s.soldAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}

@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { menuItemId, quantitySold, notes } = req.body || {};
+  const { menuItemId, quantitySold, notes, removedIngredientIds, extras } = req.body || {};
   const qty = Number(quantitySold);
   if (!menuItemId || !qty || qty <= 0) {
     return res.status(400).json({ error: 'menuItemId and positive quantitySold required' });
@@ -33,27 +33,84 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Menu item has no recipe defined' });
   }
 
-  const insufficient = menuItem.recipes.filter((r) => {
-    const need = new Prisma.Decimal(r.quantityNeeded).mul(qty);
-    return new Prisma.Decimal(r.ingredient.currentStock).lt(need);
-  });
-  if (insufficient.length > 0) {
-    return res.status(400).json({
-      error: 'Insufficient stock',
-      ingredients: insufficient.map((r) => ({
-        name: r.ingredient.name,
-        needed: new Prisma.Decimal(r.quantityNeeded).mul(qty).toString(),
-        available: r.ingredient.currentStock.toString(),
-      })),
-    });
+  const removedSet = new Set(
+    (Array.isArray(removedIngredientIds) ? removedIngredientIds : [])
+      .map(Number)
+      .filter(Number.isFinite),
+  );
+  for (const rid of removedSet) {
+    if (!menuItem.recipes.some((r) => r.ingredientId === rid)) {
+      return res.status(400).json({ error: 'Removed ingredient is not in this recipe' });
+    }
+  }
+  if (removedSet.size === menuItem.recipes.length) {
+    return res.status(400).json({ error: 'Cannot remove every ingredient from the recipe' });
   }
 
+  const extrasList = Array.isArray(extras) ? extras : [];
+  for (const ex of extrasList) {
+    const id = Number(ex?.ingredientId);
+    const q = Number(ex?.quantity);
+    if (!Number.isFinite(id) || !Number.isFinite(q) || q <= 0) {
+      return res.status(400).json({ error: 'Each extra needs an ingredientId and a positive quantity' });
+    }
+  }
+  const extraIds = Array.from(new Set(extrasList.map((e) => Number(e.ingredientId))));
+  const extraIngredients = extraIds.length
+    ? await prisma.ingredient.findMany({ where: { id: { in: extraIds }, userId: req.userId } })
+    : [];
+  if (extraIngredients.length !== extraIds.length) {
+    return res.status(400).json({ error: 'Invalid extra ingredient' });
+  }
+  const extraMap = new Map(extraIngredients.map((i) => [i.id, i]));
+
+  const deductions = new Map();
+  for (const r of menuItem.recipes) {
+    if (removedSet.has(r.ingredientId)) continue;
+    const need = new Prisma.Decimal(r.quantityNeeded).mul(qty);
+    deductions.set(r.ingredientId, (deductions.get(r.ingredientId) || new Prisma.Decimal(0)).add(need));
+  }
+  for (const ex of extrasList) {
+    const id = Number(ex.ingredientId);
+    const need = new Prisma.Decimal(ex.quantity).mul(qty);
+    deductions.set(id, (deductions.get(id) || new Prisma.Decimal(0)).add(need));
+  }
+
+  const recipeIngredients = new Map(menuItem.recipes.map((r) => [r.ingredientId, r.ingredient]));
+  const insufficient = [];
+  for (const [id, need] of deductions) {
+    const ing = recipeIngredients.get(id) || extraMap.get(id);
+    if (!ing) continue;
+    if (new Prisma.Decimal(ing.currentStock).lt(need)) {
+      insufficient.push({
+        name: ing.name,
+        needed: need.toString(),
+        available: ing.currentStock.toString(),
+      });
+    }
+  }
+  if (insufficient.length > 0) {
+    return res.status(400).json({ error: 'Insufficient stock', ingredients: insufficient });
+  }
+
+  const noteParts = [];
+  for (const rid of removedSet) {
+    const r = menuItem.recipes.find((x) => x.ingredientId === rid);
+    if (r) noteParts.push(`no ${r.ingredient.name.toLowerCase()}`);
+  }
+  for (const ex of extrasList) {
+    const ing = extraMap.get(Number(ex.ingredientId));
+    if (ing) noteParts.push(`+${ex.quantity} ${ing.name.toLowerCase()}`);
+  }
+  const composedNote = noteParts.join(' · ');
+  const trimmedFreeText = typeof notes === 'string' ? notes.trim() : '';
+  const finalNote = [composedNote, trimmedFreeText].filter(Boolean).join(' — ') || null;
+
   const sale = await prisma.$transaction(async (tx) => {
-    for (const r of menuItem.recipes) {
-      const deduction = new Prisma.Decimal(r.quantityNeeded).mul(qty);
+    for (const [id, need] of deductions) {
       await tx.ingredient.update({
-        where: { id: r.ingredientId },
-        data: { currentStock: { decrement: deduction } },
+        where: { id },
+        data: { currentStock: { decrement: need } },
       });
     }
     return tx.salesLog.create({
@@ -61,7 +118,7 @@ router.post('/', async (req, res) => {
         userId: req.userId,
         menuItemId: menuItem.id,
         quantitySold: qty,
-        notes,
+        notes: finalNote,
       },
       include: { menuItem: true },
     });
