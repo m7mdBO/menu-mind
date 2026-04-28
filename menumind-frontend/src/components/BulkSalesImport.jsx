@@ -3,8 +3,31 @@ import * as XLSX from 'xlsx';
 import api from '../lib/api';
 import SearchableSelect from './SearchableSelect';
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function dateOnlyToISO(yyyymmdd) {
+  if (!yyyymmdd) return null;
+  const m = String(yyyymmdd).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return yyyymmdd;
+  const [, y, mo, d] = m;
+  if (yyyymmdd.slice(0, 10) === todayLocal()) {
+    return new Date().toISOString();
+  }
+  return new Date(Number(y), Number(mo) - 1, Number(d), 12, 0, 0).toISOString();
+}
+
+function isoToLocalDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
 function parsePasteText(text) {
@@ -81,7 +104,7 @@ function ConfidenceBadge({ level }) {
 export default function BulkSalesImport({ menuItems, onImported }) {
   const [stage, setStage] = useState('input');
   const [pasteText, setPasteText] = useState('');
-  const [defaultDate, setDefaultDate] = useState(todayISO());
+  const [defaultDate, setDefaultDate] = useState(todayLocal());
   const [previewRows, setPreviewRows] = useState([]);
   const [results, setResults] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -95,10 +118,14 @@ export default function BulkSalesImport({ menuItems, onImported }) {
     }
     setBusy(true);
     try {
-      const rows = rawRows.map((r) => ({ ...r, date: r.date || defaultDate }));
+      const rows = rawRows.map((r) => ({
+        ...r,
+        date: dateOnlyToISO(r.date || defaultDate),
+      }));
       const { data } = await api.post('/sales/bulk-preview', { rows });
       setPreviewRows(data.rows.map((r) => ({
         ...r,
+        date: isoToLocalDate(r.date),
         selectedMenuItemId: r.match?.menuItemId ?? 0,
       })));
       setStage('preview');
@@ -152,7 +179,7 @@ export default function BulkSalesImport({ menuItems, onImported }) {
         originalName: r.originalName,
         menuItemId: r.selectedMenuItemId,
         quantity: r.quantity,
-        date: r.date,
+        date: dateOnlyToISO(r.date),
       }));
       const { data } = await api.post('/sales/bulk-commit', { rows: payload });
       setResults(data);
@@ -354,7 +381,7 @@ export default function BulkSalesImport({ menuItems, onImported }) {
                     <input
                       type="date"
                       className="input"
-                      value={row.date ? row.date.slice(0, 10) : ''}
+                      value={row.date || ''}
                       onChange={(e) => patchRow(i, { date: e.target.value || null })}
                     />
                   </div>
