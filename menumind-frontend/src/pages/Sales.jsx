@@ -16,17 +16,17 @@ function categoryColor(cat) {
 function MenuCard({ item, ingredients, isActive, onActivate, onLog, onCancel, error }) {
   const [qty, setQty] = useState(1);
   const [logging, setLogging] = useState(false);
-  const [showCustomize, setShowCustomize] = useState(false);
   const [removedIds, setRemovedIds] = useState(() => new Set());
   const [extras, setExtras] = useState([]);
+  const [adderOpen, setAdderOpen] = useState(false);
   const [extraIngredientId, setExtraIngredientId] = useState('');
   const [extraQty, setExtraQty] = useState('1');
 
   function reset() {
     setQty(1);
-    setShowCustomize(false);
     setRemovedIds(new Set());
     setExtras([]);
+    setAdderOpen(false);
     setExtraIngredientId('');
     setExtraQty('1');
   }
@@ -63,10 +63,23 @@ function MenuCard({ item, ingredients, isActive, onActivate, onLog, onCancel, er
     setExtras((prev) => [...prev, { ingredientId: id, name: ing.name, unit: ing.unit, quantity: q }]);
     setExtraIngredientId('');
     setExtraQty('1');
+    setAdderOpen(false);
   }
 
-  function removeExtra(id) {
-    setExtras((prev) => prev.filter((e) => e.ingredientId !== id));
+  function incExtra(id) {
+    setExtras((prev) =>
+      prev.map((e) => (e.ingredientId === id ? { ...e, quantity: Number((e.quantity + 1).toFixed(3)) } : e)),
+    );
+  }
+
+  function decExtra(id) {
+    setExtras((prev) =>
+      prev.flatMap((e) => {
+        if (e.ingredientId !== id) return [e];
+        const next = Number((e.quantity - 1).toFixed(3));
+        return next <= 0 ? [] : [{ ...e, quantity: next }];
+      }),
+    );
   }
 
   const allRecipeRemoved = recipeIngredientIds.size > 0 && removedIds.size === recipeIngredientIds.size;
@@ -142,119 +155,108 @@ function MenuCard({ item, ingredients, isActive, onActivate, onLog, onCancel, er
         </div>
 
         {item.recipes.length > 0 && (
-          <div className="border border-line rounded-sm">
-            <button
-              type="button"
-              onClick={() => setShowCustomize((s) => !s)}
-              className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-display font-bold uppercase tracking-signage text-navy hover:bg-bone/60 transition-colors"
-            >
-              <span>
-                Customize order
-                {(removedIds.size > 0 || extras.length > 0) && (
-                  <span className="ml-2 inline-block bg-copper text-cream font-mono px-1.5 py-0.5 rounded-sm text-[10px]">
-                    {removedIds.size + extras.length}
-                  </span>
-                )}
-              </span>
-              <span className="text-copper">{showCustomize ? '▲' : '▼'}</span>
-            </button>
+          <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-signage text-ash">
+              Tap to skip · use + to add extras
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {item.recipes.map((r) => {
+                const removed = removedIds.has(r.ingredient.id);
+                return (
+                  <button
+                    type="button"
+                    key={r.ingredient.id}
+                    onClick={() => toggleRemove(r.ingredient.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-signage border transition-colors ${
+                      removed
+                        ? 'bg-bone/60 border-tomato/40 text-tomato line-through'
+                        : 'bg-cream border-line text-navy hover:border-copper hover:text-copper-dark'
+                    }`}
+                  >
+                    {r.ingredient.name}
+                  </button>
+                );
+              })}
 
-            {showCustomize && (
-              <div className="px-3 pb-3 pt-1 space-y-3">
-                <div>
-                  <div className="text-[10px] uppercase tracking-signage text-ash mb-1.5">Recipe ingredients</div>
-                  <div className="space-y-1">
-                    {item.recipes.map((r) => {
-                      const removed = removedIds.has(r.ingredient.id);
-                      return (
-                        <label
-                          key={r.ingredient.id}
-                          className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-bone/60 ${
-                            removed ? 'opacity-50' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={!removed}
-                              onChange={() => toggleRemove(r.ingredient.id)}
-                              className="accent-copper"
-                            />
-                            <span className={`text-sm text-navy truncate ${removed ? 'line-through' : ''}`}>
-                              {r.ingredient.name}
-                            </span>
-                          </div>
-                          <span className="font-mono text-[11px] text-ash shrink-0">
-                            {Number(r.quantityNeeded)} {r.ingredient.unit}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+              {extras.map((ex) => (
+                <span
+                  key={ex.ingredientId}
+                  className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-xs font-display font-bold uppercase tracking-signage bg-mustard/30 border border-mustard text-navy"
+                >
+                  + {ex.name}
+                  <span className="font-mono text-[10px] text-navy/70">×{ex.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => decExtra(ex.ingredientId)}
+                    className="w-5 h-5 rounded-full bg-cream/70 hover:bg-cream text-navy text-sm leading-none flex items-center justify-center"
+                    aria-label="Decrease"
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => incExtra(ex.ingredientId)}
+                    className="w-5 h-5 rounded-full bg-cream/70 hover:bg-cream text-navy text-sm leading-none flex items-center justify-center"
+                    aria-label="Increase"
+                  >
+                    +
+                  </button>
+                </span>
+              ))}
 
-                <div>
-                  <div className="text-[10px] uppercase tracking-signage text-ash mb-1.5">Extras</div>
-                  {extras.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {extras.map((ex) => (
-                        <div key={ex.ingredientId} className="flex items-center justify-between gap-2 px-2 py-1.5 bg-mustard/15 rounded-sm">
-                          <span className="text-sm text-navy truncate">+ {ex.name}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono text-[11px] text-ash">{ex.quantity} {ex.unit}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeExtra(ex.ingredientId)}
-                              className="text-tomato text-xs hover:underline"
-                            >
-                              remove
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {extraOptions.length > 0 ? (
-                    <div className="flex gap-2">
-                      <select
-                        value={extraIngredientId}
-                        onChange={(e) => setExtraIngredientId(e.target.value)}
-                        className="input flex-1 text-sm"
-                      >
-                        <option value="">Add an extra…</option>
-                        {extraOptions.map((ing) => (
-                          <option key={ing.id} value={ing.id}>
-                            {ing.name} ({ing.unit})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        value={extraQty}
-                        onChange={(e) => setExtraQty(e.target.value)}
-                        className="input w-24 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={addExtra}
-                        disabled={!extraIngredientId}
-                        className="btn-secondary px-3 disabled:opacity-50"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-ash italic">All ingredients already in recipe or added.</div>
-                  )}
-                </div>
+              {extraOptions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAdderOpen((o) => !o)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-signage border transition-colors ${
+                    adderOpen
+                      ? 'bg-copper border-copper text-cream'
+                      : 'bg-cream border-dashed border-copper text-copper hover:bg-copper hover:text-cream'
+                  }`}
+                >
+                  + Add
+                </button>
+              )}
+            </div>
 
-                {qty > 1 && (removedIds.size > 0 || extras.length > 0) && (
-                  <div className="text-[11px] text-ash bg-bone/60 px-2 py-1.5 rounded-sm">
-                    Applies to all {qty} units in this punch.
-                  </div>
-                )}
+            {adderOpen && extraOptions.length > 0 && (
+              <div className="flex gap-2 pt-1">
+                <select
+                  value={extraIngredientId}
+                  onChange={(e) => setExtraIngredientId(e.target.value)}
+                  className="input flex-1 text-sm"
+                  autoFocus
+                >
+                  <option value="">Pick an ingredient…</option>
+                  {extraOptions.map((ing) => (
+                    <option key={ing.id} value={ing.id}>
+                      {ing.name} ({ing.unit})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={extraQty}
+                  onChange={(e) => setExtraQty(e.target.value)}
+                  className="input w-20 text-sm"
+                  aria-label="Quantity"
+                />
+                <button
+                  type="button"
+                  onClick={addExtra}
+                  disabled={!extraIngredientId}
+                  className="btn-secondary px-3 disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+            )}
+
+            {qty > 1 && (removedIds.size > 0 || extras.length > 0) && (
+              <div className="text-[11px] text-ash italic">
+                Modifications apply to all {qty} units.
               </div>
             )}
           </div>
