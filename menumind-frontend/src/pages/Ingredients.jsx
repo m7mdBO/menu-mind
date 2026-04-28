@@ -82,22 +82,22 @@ export default function Ingredients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between border-b-2 border-navy pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-navy pb-4">
         <div>
           <div className="eyebrow">Walk-in & Pantry</div>
-          <h1 className="font-display font-black text-5xl text-navy leading-none mt-1">Stock</h1>
+          <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">Stock</h1>
         </div>
         <button onClick={startCreate} className="btn-primary">+ Add ingredient</button>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <input
           placeholder="Search ingredients…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input flex-1"
         />
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input md:w-56">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input sm:w-56">
           <option value="">All statuses</option>
           <option value="low">Low stock only</option>
           <option value="ok">Above threshold</option>

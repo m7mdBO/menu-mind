@@ -149,10 +149,10 @@ export default function Sales() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between border-b-2 border-navy pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-navy pb-4">
         <div>
           <div className="eyebrow">Point of Sale</div>
-          <h1 className="font-display font-black text-5xl text-navy leading-none mt-1">Sales</h1>
+          <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">Sales</h1>
         </div>
         {success && (
           <div className="bg-sage/15 border-l-4 border-sage px-3 py-2 text-sage font-medium text-sm">
@@ -221,15 +221,15 @@ export default function Sales() {
         ) : (
           <ul className="divide-y divide-line/60">
             {sales.map((s) => (
-              <li key={s.id} className="px-5 py-3 flex items-center justify-between text-sm">
-                <div className="flex items-center gap-4">
+              <li key={s.id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
+                <div className="flex items-center gap-3 min-w-0">
                   <span className="font-mono text-xs text-copper">#{String(s.id).padStart(4, '0')}</span>
-                  <span className="font-medium text-ink">{s.menuItem.name}</span>
-                  <span className="font-mono text-xs bg-navy text-cream px-2 py-0.5 rounded-sm">
+                  <span className="font-medium text-ink truncate">{s.menuItem.name}</span>
+                  <span className="font-mono text-xs bg-navy text-cream px-2 py-0.5 rounded-sm shrink-0">
                     ×{s.quantitySold}
                   </span>
                 </div>
-                <span className="text-[11px] text-ash uppercase tracking-signage">
+                <span className="text-[11px] text-ash uppercase tracking-signage shrink-0">
                   {new Date(s.soldAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                 </span>
               </li>

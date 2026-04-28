@@ -42,16 +42,16 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-end justify-between border-b-2 border-navy pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-navy pb-4">
         <div>
           <div className="eyebrow">Station Overview</div>
-          <h1 className="font-display font-black text-5xl text-navy leading-none mt-1">
+          <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">
             The Pass
           </h1>
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-signage text-ash">Live snapshot</div>
-          <div className="font-mono text-sm text-navy">{new Date().toLocaleString()}</div>
+          <div className="font-mono text-xs md:text-sm text-navy">{new Date().toLocaleString()}</div>
         </div>
       </div>
 
@@ -176,17 +176,17 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-line/60">
               {data.recentSales.map((s) => (
-                <li key={s.id} className="px-5 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <li key={s.id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span className="font-mono text-xs text-copper">
                       #{String(s.id).padStart(4, '0')}
                     </span>
-                    <span className="font-medium text-ink">{s.menuItem.name}</span>
-                    <span className="font-mono text-xs bg-navy text-cream px-2 py-0.5 rounded-sm">
+                    <span className="font-medium text-ink truncate">{s.menuItem.name}</span>
+                    <span className="font-mono text-xs bg-navy text-cream px-2 py-0.5 rounded-sm shrink-0">
                       ×{s.quantitySold}
                     </span>
                   </div>
-                  <span className="text-[11px] text-ash uppercase tracking-signage">
+                  <span className="text-[11px] text-ash uppercase tracking-signage shrink-0">
                     {new Date(s.soldAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </li>

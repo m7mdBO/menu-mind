@@ -46,10 +46,10 @@ export default function AIRestock() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between border-b-2 border-navy pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-navy pb-4">
         <div>
           <div className="eyebrow">Predictive Restock</div>
-          <h1 className="font-display font-black text-5xl text-navy leading-none mt-1">Restock AI</h1>
+          <h1 className="font-display font-black text-4xl md:text-5xl text-navy leading-none mt-1">Restock AI</h1>
         </div>
         <button onClick={generate} disabled={loading} className="btn-primary disabled:opacity-50">
           {loading ? 'Analyzing the line…' : 'Run prediction →'}
@@ -116,14 +116,14 @@ export default function AIRestock() {
 
           {result.draft && (
             <div className="panel relative">
-              <div className="px-5 pt-5 pb-3 border-b border-line flex items-center justify-between">
+              <div className="px-5 pt-5 pb-3 border-b border-line flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="eyebrow">AI Draft</div>
                   <div className="font-display font-black text-2xl text-navy mt-1 leading-none">
                     Restock email
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {savedMsg && <span className="text-sage text-[11px] uppercase tracking-signage font-bold">{savedMsg}</span>}
                   <button onClick={copy} className="btn-secondary text-xs">Copy</button>
                   <button onClick={save} className="btn-primary text-xs">Save draft</button>
