@@ -104,7 +104,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-line py-4 text-center text-[11px] uppercase tracking-signage text-ash/70">
-        MenuMind · Cloud Kitchen OS · Built for the line
+        MenuMind · Kitchen OS · Built for the line
       </footer>
     </div>
   );

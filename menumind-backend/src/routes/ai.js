@@ -83,7 +83,7 @@ router.post('/predict-restock', async (req, res) => {
     });
   }
 
-  const prompt = `You are a kitchen inventory assistant for a cloud kitchen. Based on current stock levels and recent sales, draft a professional restock order email.
+  const prompt = `You are a kitchen inventory assistant. Based on current stock levels and recent sales, draft a professional restock order email.
 
 Current inventory analysis (last ${windowDays} day${windowDays === 1 ? '' : 's'} of sales, ${sales.length} sale${sales.length === 1 ? '' : 's'}):
 ${JSON.stringify(inventoryReport, null, 2)}

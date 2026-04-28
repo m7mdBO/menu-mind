@@ -44,7 +44,7 @@ export default function Login() {
               "Inventory that thinks before the rush hits."
             </div>
             <div className="text-cream/60 text-sm mt-2 uppercase tracking-signage text-[10px]">
-              — The cloud kitchen pass
+              — The kitchen pass
             </div>
           </div>
           <div className="flex gap-6 text-[11px] uppercase tracking-signage text-cream/50">
