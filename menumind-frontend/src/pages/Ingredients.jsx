@@ -37,10 +37,12 @@ export default function Ingredients() {
     setEditing('new');
     setForm(empty);
     setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function startEdit(item) {
     setEditing(item.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setForm({
       name: item.name,
       unit: item.unit,

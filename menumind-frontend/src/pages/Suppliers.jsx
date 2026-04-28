@@ -16,11 +16,15 @@ export default function Suppliers() {
   }
   useEffect(() => { load(); }, []);
 
-  function startCreate() { setEditing('new'); setForm(empty); setError(''); }
+  function startCreate() {
+    setEditing('new'); setForm(empty); setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
   function startEdit(s) {
     setEditing(s.id);
     setForm({ name: s.name, email: s.email || '', phone: s.phone || '', notes: s.notes || '' });
     setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function save(e) {

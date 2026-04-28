@@ -39,6 +39,7 @@ export default function MenuItems() {
 
   function startCreate() {
     setEditing('new');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setForm(emptyForm);
     setError('');
   }
@@ -46,6 +47,7 @@ export default function MenuItems() {
   function startEdit(item) {
     const isPreset = CATEGORY_PRESETS.includes(item.category || '');
     setEditing(item.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setForm({
       name: item.name,
       description: item.description || '',
