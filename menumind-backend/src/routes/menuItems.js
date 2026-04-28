@@ -28,14 +28,44 @@ router.get('/:id', async (req, res) => {
   res.json(item);
 });
 
+function validateRecipes(recipes) {
+  if (!Array.isArray(recipes)) return null;
+  for (const r of recipes) {
+    const qty = Number(r.quantityNeeded);
+    if (!Number.isFinite(qty) || qty < 0) {
+      return 'Recipe quantities must be zero or greater';
+    }
+    if (qty > 100000) {
+      return 'Recipe quantity is unreasonably large';
+    }
+  }
+  return null;
+}
+
 router.post('/', async (req, res) => {
   const { name, description, category, recipes } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
 
+  const trimmed = String(name).trim();
+  if (!trimmed) return res.status(400).json({ error: 'name required' });
+
+  const recipeErr = validateRecipes(recipes);
+  if (recipeErr) return res.status(400).json({ error: recipeErr });
+
+  const dup = await prisma.menuItem.findFirst({
+    where: {
+      userId: req.userId,
+      name: { equals: trimmed, mode: 'insensitive' },
+    },
+  });
+  if (dup) {
+    return res.status(409).json({ error: `A menu item named "${dup.name}" already exists` });
+  }
+
   const created = await prisma.menuItem.create({
     data: {
       userId: req.userId,
-      name,
+      name: trimmed,
       description,
       category,
       recipes: Array.isArray(recipes) && recipes.length
@@ -59,11 +89,33 @@ router.put('/:id', async (req, res) => {
 
   const { name, description, category, recipes } = req.body || {};
 
+  const recipeErr = validateRecipes(recipes);
+  if (recipeErr) return res.status(400).json({ error: recipeErr });
+
+  let finalName = existing.name;
+  if (name !== undefined && name !== null) {
+    const trimmed = String(name).trim();
+    if (!trimmed) return res.status(400).json({ error: 'name cannot be empty' });
+    if (trimmed.toLowerCase() !== existing.name.toLowerCase()) {
+      const dup = await prisma.menuItem.findFirst({
+        where: {
+          userId: req.userId,
+          name: { equals: trimmed, mode: 'insensitive' },
+          NOT: { id },
+        },
+      });
+      if (dup) {
+        return res.status(409).json({ error: `A menu item named "${dup.name}" already exists` });
+      }
+    }
+    finalName = trimmed;
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     await tx.menuItem.update({
       where: { id },
       data: {
-        name: name ?? existing.name,
+        name: finalName,
         description: description ?? existing.description,
         category: category ?? existing.category,
       },

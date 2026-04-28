@@ -25,12 +25,25 @@ router.get('/', async (req, res) => {
   res.json(result);
 });
 
+function validateNumber(value, label) {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return `${label} must be a number`;
+  if (n < 0) return `${label} cannot be negative`;
+  if (n > 1_000_000) return `${label} is unreasonably large`;
+  return null;
+}
+
 router.post('/', async (req, res) => {
   const { name, unit, currentStock, lowStockThreshold, supplierIds } = req.body || {};
   if (!name || !unit) return res.status(400).json({ error: 'name and unit required' });
 
   const trimmed = String(name).trim();
   if (!trimmed) return res.status(400).json({ error: 'name and unit required' });
+
+  const stockErr = validateNumber(currentStock, 'Current stock')
+    || validateNumber(lowStockThreshold, 'Low-stock threshold');
+  if (stockErr) return res.status(400).json({ error: stockErr });
 
   const dup = await prisma.ingredient.findFirst({
     where: {
@@ -64,6 +77,10 @@ router.put('/:id', async (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
   const { name, unit, currentStock, lowStockThreshold, supplierIds } = req.body || {};
+
+  const stockErr = validateNumber(currentStock, 'Current stock')
+    || validateNumber(lowStockThreshold, 'Low-stock threshold');
+  if (stockErr) return res.status(400).json({ error: stockErr });
 
   let finalName = existing.name;
   if (name !== undefined && name !== null) {
